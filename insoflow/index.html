@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FHima / BigTW / Inso 光流法日射量預測流程</title>
+  <meta name="description" content="FHima / BigTW / Inso 光流法日射量預測流程、路徑、input/output、背景資料與排程說明。" />
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --ink: #152033;
+      --muted: #59677c;
+      --brand: #235a9f;
+      --brand-2: #2f75bd;
+      --brand-soft: #e8f1fb;
+      --line: #d9e1ec;
+      --warn: #a65f00;
+      --ok: #116b4f;
+      --danger: #9b2630;
+      --code: #0f172a;
+      --shadow: 0 8px 24px rgba(21, 32, 51, .08);
+      --radius: 16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", "Microsoft JhengHei", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--sans);
+      line-height: 1.65;
+    }
+    a { color: var(--brand); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .layout { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+    aside {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px 18px;
+      background: #0d1b2e;
+      color: #e8eef7;
+      overflow: auto;
+    }
+    aside h1 {
+      font-size: 20px;
+      line-height: 1.25;
+      margin: 0 0 8px;
+      letter-spacing: .02em;
+    }
+    aside p { color: #aebbd0; font-size: 13px; margin: 0 0 22px; }
+    nav a {
+      display: block;
+      padding: 9px 10px;
+      border-radius: 10px;
+      color: #e8eef7;
+      font-size: 14px;
+      margin: 4px 0;
+    }
+    nav a:hover, nav a.active { background: rgba(255,255,255,.10); text-decoration: none; }
+    .main { padding: 0 0 56px; }
+    header.hero {
+      background: linear-gradient(135deg, #103f77, #2f75bd);
+      color: white;
+      padding: 56px 56px 44px;
+    }
+    header.hero .eyebrow { opacity: .82; font-weight: 700; letter-spacing: .08em; font-size: 12px; text-transform: uppercase; }
+    header.hero h2 { font-size: clamp(30px, 5vw, 52px); line-height: 1.1; margin: 10px 0 16px; }
+    header.hero p { max-width: 980px; margin: 0; color: #e9f1fb; font-size: 18px; }
+    .meta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 13px;
+      background: rgba(255,255,255,.10);
+    }
+    section { padding: 34px 56px 0; }
+    section > h2 { font-size: 28px; margin: 0 0 18px; color: #18365d; }
+    section > p.lead { color: var(--muted); margin: -8px 0 22px; max-width: 980px; }
+    .grid { display: grid; gap: 16px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 18px; color: #1d4777; }
+    .card p { margin: 0; color: var(--muted); }
+    .metric { font-size: 30px; font-weight: 800; color: var(--brand); line-height: 1.1; margin-bottom: 6px; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(120px, 1fr));
+      gap: 12px;
+      align-items: stretch;
+    }
+    .flow .node {
+      position: relative;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 12px;
+      min-height: 118px;
+      box-shadow: var(--shadow);
+    }
+    .node::after {
+      content: "→";
+      position: absolute;
+      right: -14px;
+      top: 42%;
+      color: var(--brand-2);
+      font-weight: 800;
+      font-size: 22px;
+      z-index: 1;
+    }
+    .node:last-child::after { content: ""; }
+    .node .small { display: block; color: var(--muted); font-size: 13px; margin-top: 6px; }
+    .node strong { color: #1f3e67; }
+    .tag { display: inline-flex; align-items: center; border-radius: 999px; padding: 3px 9px; font-size: 12px; font-weight: 700; }
+    .tag.ok { background: #e8f6f1; color: var(--ok); }
+    .tag.warn { background: #fff4df; color: var(--warn); }
+    .tag.no { background: #fdecee; color: var(--danger); }
+    .tag.info { background: var(--brand-soft); color: var(--brand); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: white; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+    th { background: #234f8b; color: white; font-weight: 700; white-space: nowrap; }
+    tr:last-child td { border-bottom: none; }
+    td code, .code-inline { font-family: var(--mono); font-size: 13px; background: #eef3f9; color: #0e294a; border-radius: 6px; padding: 2px 5px; white-space: nowrap; }
+    pre {
+      margin: 0;
+      padding: 16px;
+      border-radius: 14px;
+      background: var(--code);
+      color: #e5eefb;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.55;
+      box-shadow: var(--shadow);
+    }
+    .code-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 0 0 8px; }
+    .code-head h3 { margin: 0; font-size: 16px; color: #1d4777; }
+    button.copy {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+      color: var(--brand);
+      padding: 6px 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .path-filter { display: grid; grid-template-columns: 1fr 190px; gap: 12px; margin-bottom: 12px; }
+    .path-filter input, .path-filter select {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font: inherit;
+      background: white;
+    }
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(8, minmax(90px, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .timebox { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 10px; text-align: center; box-shadow: var(--shadow); }
+    .timebox strong { display: block; color: var(--brand); }
+    .checklist { columns: 2; column-gap: 28px; padding-left: 18px; margin: 0; }
+    .checklist li { break-inside: avoid; margin: 0 0 10px; }
+    .note { border-left: 4px solid var(--brand-2); background: #eef5fc; padding: 14px 16px; border-radius: 12px; color: #24405e; }
+    footer { padding: 34px 56px 0; color: var(--muted); font-size: 13px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media (max-width: 1080px) {
+      .layout { display: block; }
+      aside { position: static; height: auto; }
+      nav { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 4px; }
+      header.hero, section, footer { padding-left: 24px; padding-right: 24px; }
+      .grid.cols-4, .grid.cols-3, .grid.cols-2 { grid-template-columns: 1fr; }
+      .flow { grid-template-columns: 1fr; }
+      .node::after { right: 50%; top: auto; bottom: -18px; transform: rotate(90deg); }
+      .timeline { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .checklist { columns: 1; }
+      .path-filter { grid-template-columns: 1fr; }
+    }
+    @media print {
+      aside { display: none; }
+      .layout { display: block; }
+      .main, header.hero, section, footer { padding: 0; }
+      header.hero { color: black; background: white; }
+      .card, .table-wrap, pre { box-shadow: none; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside>
+    <h1>FHima 光流法<br>日射量預測</h1>
+    <p>路徑、資料流程、時間規則與上線檢查</p>
+    <nav aria-label="頁面導覽">
+      <a href="#overview">總覽</a>
+      <a href="#principle">光流法原理</a>
+      <a href="#workflow">資料流程</a>
+      <a href="#priority">檢查順序</a>
+      <a href="#paths">路徑索引</a>
+      <a href="#time">時間規則</a>
+      <a href="#commands">指令與排程</a>
+      <a href="#checklist">部署檢查</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <header class="hero">
+      <div class="eyebrow">FHima / BigTW / Inso 3-hour Forecast Workflow</div>
+      <h2>光流法日射量預測流程網頁</h2>
+      <p>本頁整合光流法預測程式之 input、output、背景資料、暫存資料、排程與檢查規則。資料處理以 UTC 驅動；日射量預報產品建議以 LOCAL TIME 命名輸出。</p>
+      <div class="meta">
+        <span class="pill">Himawari B03 / B13 / B15</span>
+        <span class="pill">3001×3001 BigTW → 575×525 FHima</span>
+        <span class="pill">t0+10 至 t0+180，共 18 筆</span>
+        <span class="pill">每 10 分鐘起報</span>
+      </div>
+    </header>
+
+    <section id="overview">
+      <h2>1. 總覽</h2>
+      <p class="lead">核心目標是利用近期衛星影像估計雲系移動，外推未來 3 小時雲場，再銜接日射量程式產生預報產品。</p>
+      <div class="grid cols-4">
+        <div class="card"><div class="metric">4</div><h3>光流輸入影像</h3><p>使用 t0−30、t0−20、t0−10、t0 四張影像估計雲系位移。</p></div>
+        <div class="card"><div class="metric">18</div><h3>預報 lead time</h3><p>每次起報輸出 t0+10 到 t0+180，每 10 分鐘一筆。</p></div>
+        <div class="card"><div class="metric">3</div><h3>衛星波段</h3><p>B03 可見光反照率、B13/B15 紅外亮溫共同描述雲量、雲型與雲頂熱力特徵。</p></div>
+        <div class="card"><div class="metric">54</div><h3>ForeHima dat</h3><p>每個 t0 預期 18 個 valid time × 3 bands，共 54 個裁切後 input。</p></div>
+      </div>
+      <div class="note" style="margin-top:16px;">重點配置：程式放在 <span class="code-inline">/home/jackline/shcode/Inso_IDL/</span>，環境檔放在 <span class="code-inline">/home/jackline/shcode/</span>，固定背景資料放在 <span class="code-inline">domain</span> 與 <span class="code-inline">ICBC</span>，大量輸入、中間與輸出資料放在 <span class="code-inline">/data/jackline/</span>。</div>
+    </section>
+
+    <section id="principle">
+      <h2>2. 光流法與波段角色</h2>
+      <div class="grid cols-3">
+        <div class="card"><h3>基本原理</h3><p>由連續影像估計像素強度場的位移向量，將雲場向未來時間外推。短時間內雲團形態通常具有連續性，因此適合 0–3 小時 very-short-range nowcasting。</p></div>
+        <div class="card"><h3>B03 太陽幾何修正</h3><p>B03 反照率先除以 cos(SZA) 做 solar normalization，光流外推後再依 valid time 的 cos(SZA) 乘回。B13、B15 為紅外亮溫，不做此修正。</p></div>
+        <div class="card"><h3>演算法 fallback</h3><p>目前策略優先使用 LK；若 LK 因 OpenCV 或環境問題失敗，改用 DARTS 作為 fallback。</p></div>
+      </div>
+      <div class="table-wrap" style="margin-top:16px;">
+        <table>
+          <thead><tr><th>Band</th><th>物理意義</th><th>光流輸入</th><th>日射量預測用途</th></tr></thead>
+          <tbody>
+            <tr><td><strong>B03</strong></td><td>可見光反照率 alb</td><td>3001×3001；太陽幾何修正後外推</td><td>描述白天雲反射與遮蔽程度</td></tr>
+            <tr><td><strong>B13</strong></td><td>紅外亮溫 btp</td><td>3001×3001；直接外推</td><td>補充雲頂溫度與雲型資訊</td></tr>
+            <tr><td><strong>B15</strong></td><td>紅外亮溫 btp</td><td>3001×3001；直接外推</td><td>輔助判斷高雲、低雲與雲厚差異</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="workflow">
+      <h2>3. 資料處理流程</h2>
+      <p class="lead">流程原則是能使用既有產品就不重算；缺哪一步才補哪一步。</p>
+      <div class="flow" aria-label="資料處理流程圖">
+        <div class="node"><strong>HSD RAW</strong><span class="small">S0210–S0510<br>DAT / HDR</span></div>
+        <div class="node"><strong>BigTW_2001</strong><span class="small">Observed input<br>3001×3001</span></div>
+        <div class="node"><strong>Optical Flow</strong><span class="small">B03 / B13 / B15<br>18 lead times</span></div>
+        <div class="node"><strong>BigTW</strong><span class="small">未裁切預報<br>3001×3001</span></div>
+        <div class="node"><strong>ForeHima</strong><span class="small">裁切後預報<br>575×525</span></div>
+        <div class="node"><strong>InsoHima</strong><span class="small">日射量 IDL<br>3-hour forecast</span></div>
+      </div>
+      <div class="table-wrap" style="margin-top:18px;">
+        <table>
+          <thead><tr><th>順序</th><th>處理內容</th><th>Input</th><th>Output</th><th>負責程式</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>檢查 FHima 575×525 是否已存在</td><td><code>/data/jackline/ForeHima/DAT/t0/</code></td><td>若完整，直接跑日射量</td><td><code>run_FHima_InsoFcst_3hr_share.sh</code></td></tr>
+            <tr><td>2</td><td>檢查 BigTW 3001×3001 預報是否已存在</td><td><code>/data/jackline/BigTW/Bxx/t0/</code></td><td>若完整，裁切成 FHima</td><td><code>run_FHima_InsoFcst_3hr_share.sh</code></td></tr>
+            <tr><td>3</td><td>檢查 BigTW_2001 observed 或 gapfill</td><td><code>/data/jackline/BigTW_2001/Bxx/YYYY/YYYYMM/</code>；若缺則查 <code>/data/jackline/BigTW/Bxx/t-10/</code></td><td>若可用，跑 optical flow</td><td>Shell + Python</td></tr>
+            <tr><td>4</td><td>下載 / 準備 HSD</td><td><code>filesv1::HIMAWARI/HSD/</code> 或 archive；S0210–S0510</td><td><code>/data/jackline/temp/HSD_DATA/</code> 與 HDRDIR</td><td>Shell + <code>get_header_info.pro</code></td></tr>
+            <tr><td>5</td><td>產生 BigTW_2001 observed</td><td>HSD DAT / HDR</td><td><code>/data/jackline/BigTW_2001/Bxx/YYYY/YYYYMM/</code></td><td><code>read_BigTW_batch_insoflow.pro</code> + <code>read_segment...</code></td></tr>
+            <tr><td>6</td><td>Optical flow</td><td>BigTW_2001 observed / previous nowcast gapfill</td><td><code>/data/jackline/BigTW/Bxx/t0/</code></td><td><code>B03/B13/B15_soflow_bin_Loop.py</code></td></tr>
+            <tr><td>7</td><td>裁切 FHima</td><td><code>/data/jackline/BigTW/Bxx/t0/</code></td><td><code>/data/jackline/ForeHima/DAT/t0/</code></td><td><code>CUT_DAT_TO_FHIMA_BATCH.pro</code></td></tr>
+            <tr><td>8</td><td>日射量預報</td><td><code>/data/jackline/ForeHima/DAT/t0/</code> + ICBC 背景資料</td><td><code>/data/jackline/InsoHima/</code></td><td><code>inso_ast_atm_Hima_Fcst_3hr.pro</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="priority">
+      <h2>4. 資料檢查優先順序</h2>
+      <div class="grid cols-4">
+        <div class="card"><h3>Step 1</h3><p>先檢查 <span class="code-inline">ForeHima/DAT/t0/</span> 是否已有完整 575×525 資料。完整時直接跑日射量。</p></div>
+        <div class="card"><h3>Step 2</h3><p>再檢查 <span class="code-inline">BigTW/Bxx/t0/</span> 是否已有 3001×3001 預報。完整時只需裁切。</p></div>
+        <div class="card"><h3>Step 3</h3><p>再檢查 <span class="code-inline">BigTW_2001</span> observed；若缺檔可查前一個未裁切預報作 gapfill。</p></div>
+        <div class="card"><h3>Step 4</h3><p>最後才下載或準備 HSD，產生 BigTW_2001，再接續光流、裁切與日射量預報。</p></div>
+      </div>
+      <div class="note" style="margin-top:16px;">Gapfill 預設最多允許 1 個不同時間點。HSD 來源可用 <span class="code-inline">instant</span>、<span class="code-inline">archive</span> 或 <span class="code-inline">auto</span>；H09 / H08 可透過檔案探針與下載 fallback 自動切換。</div>
+    </section>
+
+    <section id="paths">
+      <h2>5. 路徑索引</h2>
+      <p class="lead">可用關鍵字搜尋路徑、檔名、用途或清理建議。大量 input / output 應放在 <span class="code-inline">/data/jackline/</span>，不要放在程式資料夾。</p>
+      <div class="path-filter">
+        <label class="sr-only" for="pathSearch">搜尋路徑索引</label>
+        <input id="pathSearch" type="search" placeholder="搜尋：B03、ForeHima、cleanup、ICBC、yaml、HSD..." />
+        <select id="categoryFilter" aria-label="分類篩選">
+          <option value="all">全部分類</option>
+          <option value="程式/設定">程式/設定</option>
+          <option value="背景固定資料">背景固定資料</option>
+          <option value="HSD暫存">HSD暫存</option>
+          <option value="Observed input">Observed input</option>
+          <option value="Forecast output">Forecast output</option>
+          <option value="日射量/log">日射量/log</option>
+        </select>
+      </div>
+      <div class="table-wrap">
+        <table id="pathTable">
+          <thead><tr><th>分類</th><th>項目</th><th>路徑 / 檔名規則</th><th>用途</th><th>清理</th></tr></thead>
+          <tbody>
+            <tr data-cat="程式/設定"><td>程式/設定</td><td>環境設定</td><td><code>/home/jackline/shcode/set_enviorn_variables_share.sh</code></td><td>定義 workflow 變數、資料根目錄、Python/IDL 執行檔</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="程式/設定"><td>程式/設定</td><td>程式主目錄</td><td><code>/home/jackline/shcode/Inso_IDL/</code></td><td>主控 shell、IDL .pro、Python、YAML、util、ICBC 背景資料</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="程式/設定"><td>程式/設定</td><td>主控 shell</td><td><code>run_FHima_InsoFcst_3hr_share.sh</code></td><td>整體流程主控，可由 crontab 呼叫</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="程式/設定"><td>程式/設定</td><td>IDL 前處理</td><td><code>read_segment_BigTW_allband_2001.pro</code><br><code>read_BigTW_batch_insoflow.pro</code></td><td>HSD segment 轉 BigTW_2001；依 t0 產生 observed input</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="程式/設定"><td>程式/設定</td><td>裁切與日射量 IDL</td><td><code>CUT_DAT_TO_FHIMA_BATCH.pro</code><br><code>inso_ast_atm_Hima_Fcst_3hr.pro</code></td><td>BigTW 預報裁切成 FHima；讀 FHima 產生 3 小時日射量預報</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="程式/設定"><td>程式/設定</td><td>光流 Python</td><td><code>B03_soflow_bin_Loop.py</code><br><code>B13_soflow_bin_Loop.py</code><br><code>B15_soflow_bin_Loop.py</code></td><td>三個 band 的 optical-flow nowcast</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="程式/設定"><td>程式/設定</td><td>YAML config</td><td><code>configB03_2001.yaml</code><br><code>configB13_2001.yaml</code><br><code>configB15_2001.yaml</code></td><td>Python input/output 路徑與時間設定；主控 shell 更新 starttime/endtime</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="背景固定資料"><td>背景固定資料</td><td>Domain</td><td><code>/home/jackline/shcode/domain/</code></td><td>BigTW/FHima domain、經緯度、pixel/line、裁切 index、mask</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="背景固定資料"><td>背景固定資料</td><td>ICBC</td><td><code>/home/jackline/shcode/Inso_IDL/ICBC/</code></td><td>坡度、坡向、地形、AOD、loninfo、latinfo 等日射量背景資料</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="背景固定資料"><td>背景固定資料</td><td>Python util</td><td><code>/home/jackline/shcode/Inso_IDL/util/</code></td><td><code>util.py</code>、<code>create_time_list</code> 等 Python import 用工具</td><td><span class="tag no">不可清除</span></td></tr>
+            <tr data-cat="HSD暫存"><td>HSD暫存</td><td>HSD DAT / bz2</td><td><code>/data/jackline/temp/HSD_DATA/</code><br><code>HS_H09_YYYYMMDD_HHMM_B03_FLDK_R05_S0210.DAT</code></td><td>下載 HSD、解壓縮、提供 IDL 讀 segment</td><td><span class="tag warn">可定期刪除舊檔</span></td></tr>
+            <tr data-cat="HSD暫存"><td>HSD暫存</td><td>HSD HDR</td><td><code>/data/jackline/temp/Hima_HSD_Header/</code><br><code>HS_H09_YYYYMMDD_HHMM_B13_FLDK_R20_S0310.HDR</code></td><td><code>get_header_info.pro</code> 產生的 header</td><td><span class="tag warn">可定期刪除舊檔</span></td></tr>
+            <tr data-cat="Observed input"><td>Observed input</td><td>B03 observed</td><td><code>/data/jackline/BigTW_2001/B03/YYYY/YYYYMM/YYYYMMDD_HHMM_B03_alb.dat</code></td><td>每個 t0 需 t0−30、t0−20、t0−10、t0</td><td><span class="tag info">依政策保留</span></td></tr>
+            <tr data-cat="Observed input"><td>Observed input</td><td>B13 observed</td><td><code>/data/jackline/BigTW_2001/B13/YYYY/YYYYMM/YYYYMMDD_HHMM_B13_btp.dat</code></td><td>每個 t0 需 t0−30、t0−20、t0−10、t0</td><td><span class="tag info">依政策保留</span></td></tr>
+            <tr data-cat="Observed input"><td>Observed input</td><td>B15 observed</td><td><code>/data/jackline/BigTW_2001/B15/YYYY/YYYYMM/YYYYMMDD_HHMM_B15_btp.dat</code></td><td>每個 t0 需 t0−30、t0−20、t0−10、t0</td><td><span class="tag info">依政策保留</span></td></tr>
+            <tr data-cat="Forecast output"><td>Forecast output</td><td>BigTW B03 forecast</td><td><code>/data/jackline/BigTW/B03/t0/valid_B03_alb.dat</code></td><td>裁切前預報，也可作缺 observed 時的 gapfill</td><td><span class="tag warn">每日清前日</span></td></tr>
+            <tr data-cat="Forecast output"><td>Forecast output</td><td>BigTW B13 forecast</td><td><code>/data/jackline/BigTW/B13/t0/valid_B13_btp.dat</code></td><td>裁切前預報，也可作缺 observed 時的 gapfill</td><td><span class="tag warn">每日清前日</span></td></tr>
+            <tr data-cat="Forecast output"><td>Forecast output</td><td>BigTW B15 forecast</td><td><code>/data/jackline/BigTW/B15/t0/valid_B15_btp.dat</code></td><td>裁切前預報，也可作缺 observed 時的 gapfill</td><td><span class="tag warn">每日清前日</span></td></tr>
+            <tr data-cat="Forecast output"><td>Forecast output</td><td>ForeHima DAT</td><td><code>/data/jackline/ForeHima/DAT/t0/valid_Bxx_var.dat</code></td><td>575×525 裁切後預報；日射量預報 input</td><td><span class="tag info">依政策保留</span></td></tr>
+            <tr data-cat="日射量/log"><td>日射量/log</td><td>日射量預報根目錄</td><td><code>/data/jackline/InsoHima/</code></td><td>Inso forecast 產品；實際子目錄依日射量 IDL 設定</td><td><span class="tag ok">正式產品</span></td></tr>
+            <tr data-cat="日射量/log"><td>日射量/log</td><td>預報版本資料夾</td><td><code>/data/jackline/InsoHima/ver11503_Fcst/</code></td><td>3-hour solar irradiance forecast；建議使用 LOCAL time 輸出</td><td><span class="tag ok">正式產品</span></td></tr>
+            <tr data-cat="日射量/log"><td>日射量/log</td><td>Log</td><td><code>/data/jackline/log/fhima_fcst.log</code><br><code>cleanup_hsd.log</code><br><code>cleanup_bigtw.log</code></td><td>crontab stdout/stderr 導至此處</td><td><span class="tag info">保留近期</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="time">
+      <h2>6. 時間規則</h2>
+      <p class="lead">主控輸入時間以 UTC 命名；日射量 output 建議使用 LOCAL TIME。日射量起報只跑 LOCAL 06:00–18:00，3 小時預報可到 21:00。</p>
+      <div class="timeline" aria-label="光流輸入與輸出時間視窗">
+        <div class="timebox"><strong>t0−30</strong><span>input 1</span></div>
+        <div class="timebox"><strong>t0−20</strong><span>input 2</span></div>
+        <div class="timebox"><strong>t0−10</strong><span>input 3</span></div>
+        <div class="timebox"><strong>t0</strong><span>input 4</span></div>
+        <div class="timebox"><strong>t0+10</strong><span>output 起點</span></div>
+        <div class="timebox"><strong>...</strong><span>每 10 分鐘</span></div>
+        <div class="timebox"><strong>t0+180</strong><span>output 終點</span></div>
+        <div class="timebox"><strong>UTC+8</strong><span>LOCAL 命名</span></div>
+      </div>
+      <div class="table-wrap" style="margin-top:16px;">
+        <table>
+          <thead><tr><th>項目</th><th>規則</th><th>例子</th></tr></thead>
+          <tbody>
+            <tr><td>主控輸入時間</td><td>UTC，格式 <code>YYYYMMDD_HHMM</code> 或命令列 <code>YYYY-MM-DD HHMM</code></td><td><code>20240101_0350 UTC</code></td></tr>
+            <tr><td>Realtime 無參數模式</td><td>依 <code>REALTIME_OFFSETS_MIN="20 10"</code>，先跑 now−20，再跑 now−10</td><td>04:00 UTC 啟動 → 03:40、03:50</td></tr>
+            <tr><td>光流 input</td><td>t0−30、t0−20、t0−10、t0</td><td>t0=0350 → 0320、0330、0340、0350</td></tr>
+            <tr><td>光流 output</td><td>t0+10 到 t0+180，每 10 分鐘，共 18 筆</td><td>0400、0410、...、0650</td></tr>
+            <tr><td>日射量 local base 限制</td><td>LOCAL base time 06:00 到 18:00 才跑</td><td>UTC+8 後檢查</td></tr>
+            <tr><td>日射量輸出時間</td><td>建議用 LOCAL time；input t0 仍是 UTC</td><td>0350 UTC → 1150 LOCAL</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="commands">
+      <h2>7. 指令與排程</h2>
+      <div class="grid cols-2">
+        <div>
+          <div class="code-head"><h3>正式單次與 dry-run</h3><button class="copy" data-copy="cmd1">複製</button></div>
+          <pre id="cmd1"><code>cd /home/jackline/shcode/Inso_IDL
+
+# 只檢查資料判斷與路徑，不下載或計算
+bash run_FHima_InsoFcst_3hr_share.sh --dry-run 2024-01-01 0350
+
+# 正式單次執行
+bash run_FHima_InsoFcst_3hr_share.sh 2024-01-01 0350
+
+# 排程模式：無參數執行，會自動跑 now-20 與 now-10
+bash run_FHima_InsoFcst_3hr_share.sh --hsd-source instant</code></pre>
+        </div>
+        <div>
+          <div class="code-head"><h3>建議 crontab</h3><button class="copy" data-copy="cmd2">複製</button></div>
+          <pre id="cmd2"><code># 主流程每 10 分鐘
+*/10 * * * * flock -n /tmp/fhima_fcst.lock /bin/bash /home/jackline/shcode/Inso_IDL/run_FHima_InsoFcst_3hr_share.sh --hsd-source instant >> /data/jackline/log/fhima_fcst.log 2>&1
+
+# 清 HSD 暫存：每 6 小時清 RAWDIR/HDRDIR 舊檔
+0 */6 * * * /bin/bash /home/jackline/shcode/Inso_IDL/cleanup_FHima_share.sh --hsd-temp >> /data/jackline/log/cleanup_hsd.log 2>&1
+
+# 清 BigTW 舊預報：每日清前一天 LOCAL date 的 BigTW 預報資料夾
+30 0 * * * /bin/bash /home/jackline/shcode/Inso_IDL/cleanup_FHima_share.sh --bigtw-prevday >> /data/jackline/log/cleanup_bigtw.log 2>&1</code></pre>
+        </div>
+      </div>
+      <div class="grid cols-2" style="margin-top:16px;">
+        <div>
+          <div class="code-head"><h3>建議建立資料夾</h3><button class="copy" data-copy="cmd3">複製</button></div>
+          <pre id="cmd3"><code>mkdir -p /home/jackline/shcode/Inso_IDL
+mkdir -p /home/jackline/shcode/domain
+mkdir -p /home/jackline/shcode/Inso_IDL/ICBC
+
+mkdir -p /data/jackline/temp/HSD_DATA
+mkdir -p /data/jackline/temp/Hima_HSD_Header
+
+mkdir -p /data/jackline/BigTW_2001/B03
+mkdir -p /data/jackline/BigTW_2001/B13
+mkdir -p /data/jackline/BigTW_2001/B15
+
+mkdir -p /data/jackline/BigTW/B03
+mkdir -p /data/jackline/BigTW/B13
+mkdir -p /data/jackline/BigTW/B15
+
+mkdir -p /data/jackline/ForeHima/DAT
+mkdir -p /data/jackline/InsoHima
+mkdir -p /data/jackline/log</code></pre>
+        </div>
+        <div class="card">
+          <h3>作業穩定性設計</h3>
+          <p>資料延遲時，每次排程處理 now−20 與 now−10，以降低 HSD 尚未到齊的機率。維護缺檔時，允許使用 t−10 未裁切預報補 1 個時間點。crontab 建議搭配 <span class="code-inline">flock</span>，避免上一輪未結束時重複開新流程。cron 不需 activate conda，可直接使用 <span class="code-inline">/home/jackline/conda_envs/py310solar/bin/python</span>。</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <h2>8. 部署檢查清單</h2>
+      <ul class="checklist">
+        <li>確認 <span class="code-inline">/home/jackline/shcode/Inso_IDL</span> 內有主控 shell、四支 IDL、三支 Python、三個 YAML、<span class="code-inline">util/</span>。</li>
+        <li>確認 <span class="code-inline">set_enviorn_variables_share.sh</span> 內的路徑與實際資料夾一致。</li>
+        <li>先以 <span class="code-inline">--dry-run</span> 檢查每個 t0 的資料判斷與路徑，不直接下載或計算。</li>
+        <li>確認三支 Python 讀取 YAML 的 starttime/endtime，並輸出到 <span class="code-inline">/data/jackline/BigTW/Bxx/t0/</span>。</li>
+        <li>確認 CUT 後 <span class="code-inline">ForeHima/DAT/t0/</span> 共 18×3 個 dat，再啟動日射量程式。</li>
+        <li>確認日射量輸出目錄與版本資料夾，例如 <span class="code-inline">/data/jackline/InsoHima/ver11503_Fcst/</span>。</li>
+        <li>確認 log 可寫入 <span class="code-inline">/data/jackline/log/</span>，並檢查 crontab stdout/stderr。</li>
+        <li>確認清理程序只清暫存與舊預報，不清除程式、背景固定資料與正式產品。</li>
+      </ul>
+      <div class="note" style="margin-top:16px;">關鍵原則：時間用 UTC 驅動資料處理；日射量輸出再轉 LOCAL TIME。正式上線前，建議先針對一個已知完整案例執行 dry-run、正式單次與排程模式三階段測試。</div>
+    </section>
+
+    <footer>
+      <p>資料來源：FHima / BigTW / Inso 路徑整理表與 FHima 光流法日射量預測流程說明。此頁為靜態 HTML，可直接部署於內部 Apache/Nginx、GitHub Pages、Google Cloud Storage 靜態網站或一般檔案伺服器。</p>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function(){
+  const search = document.getElementById('pathSearch');
+  const category = document.getElementById('categoryFilter');
+  const rows = Array.from(document.querySelectorAll('#pathTable tbody tr'));
+  function filterRows(){
+    const q = search.value.trim().toLowerCase();
+    const cat = category.value;
+    rows.forEach(row => {
+      const inCat = cat === 'all' || row.dataset.cat === cat;
+      const inText = !q || row.innerText.toLowerCase().includes(q);
+      row.style.display = inCat && inText ? '' : 'none';
+    });
+  }
+  search.addEventListener('input', filterRows);
+  category.addEventListener('change', filterRows);
+
+  document.querySelectorAll('button.copy').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-copy');
+      const code = document.getElementById(id).innerText;
+      try {
+        await navigator.clipboard.writeText(code);
+        const old = btn.textContent;
+        btn.textContent = '已複製';
+        setTimeout(() => btn.textContent = old, 1200);
+      } catch(e) {
+        btn.textContent = '請手動複製';
+      }
+    });
+  });
+
+  const links = Array.from(document.querySelectorAll('nav a'));
+  const targets = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + entry.target.id));
+      }
+    });
+  }, {rootMargin: '-30% 0px -60% 0px', threshold: 0});
+  targets.forEach(t => obs.observe(t));
+})();
+</script>
+</body>
+</html>
