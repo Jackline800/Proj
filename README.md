@@ -9,7 +9,7 @@
 
 ### 📊 光流法日射量預報作業流程與路徑對照系統 (insoflow)
 整合全域環境變數、各作業階段之輸入/輸出目錄、IDL與Python核心程式放置位置，並支援關鍵字即時搜尋與類別篩選，提供運維工程師現場快速定位目錄，內建一鍵複製 crontab 每 10 分鐘主流程排程及自動維護清理指令。 <br>
-👉 [點此觀看維護面板](https://github.com/Jackline800/Proj/blob/main/insoflow/index.html)
+👉 [點此觀看維護面板](https://Jackline800.github.io/Proj/insoflow/index.html)
 
 ---
 
