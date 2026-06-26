@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日射量反演系統演進技術白皮書 - 網頁簡報</title>
+    <style>
+        /* 基礎重置與字體設定 */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #0f172a; /* 深邃科技藍 */
+            color: #f8fafc;
+            /* 啟用 CSS 滾動吸附功能，製造 PPT 翻頁感 */
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            height: 100vh;
+            scroll-behavior: smooth;
+        }
+
+        /* 單張投影片容器設定 */
+        .slide {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 60px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 主題背景配色 */
+        .bg-dark {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        .bg-light {
+            background-color: #f1f5f9;
+            color: #334155;
+        }
+
+        /* 內容區塊寬度限制，確保閱讀體驗 */
+        .content {
+            max-width: 1200px;
+            width: 100%;
+            z-index: 2;
+        }
+
+        /* 標題與字體排版 */
+        h1 {
+            font-size: 3.5rem;
+            color: #38bdf8;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            color: #38bdf8;
+            margin-bottom: 40px;
+            border-bottom: 4px solid #0284c7;
+            padding-bottom: 15px;
+            display: inline-block;
+        }
+
+        .bg-light h2 {
+            color: #0f172a;
+            border-bottom-color: #0ea5e9;
+        }
+
+        .subtitle {
+            font-size: 1.6rem;
+            color: #94a3b8;
+            margin-bottom: 50px;
+            font-weight: 500;
+        }
+
+        .bg-light .subtitle {
+            color: #64748b;
+        }
+
+        /* 條列式清單 (Bullet Points) */
+        ul {
+            font-size: 1.3rem;
+            line-height: 1.8;
+            margin-left: 30px;
+            list-style-type: none;
+        }
+
+        ul li {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        ul > li::before {
+            content: "■";
+            color: #0ea5e9;
+            position: absolute;
+            left: -30px;
+            top: 2px;
+            font-size: 1rem;
+        }
+
+        .sub-list {
+            margin-top: 15px;
+            margin-left: 20px;
+            font-size: 1.15rem;
+            color: #cbd5e1;
+            border-left: 2px solid rgba(14, 165, 233, 0.3);
+            padding-left: 25px;
+        }
+
+        .bg-light .sub-list {
+            color: #475569;
+            border-left-color: rgba(2, 132, 199, 0.3);
+        }
+
+        .sub-list > li::before {
+            content: "–";
+            color: inherit;
+            left: -20px;
+            font-weight: bold;
+        }
+
+        /* 強調文字 */
+        strong {
+            color: #0ea5e9;
+        }
+        .bg-light strong {
+            color: #0284c7;
+        }
+
+        /* 專業表格設計 (針對第3頁) */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 1.1rem;
+            background: white;
+            color: #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+        }
+
+        th, td {
+            padding: 20px 25px;
+            border: 1px solid #e2e8f0;
+            text-align: left;
+            vertical-align: top;
+        }
+
+        th {
+            background-color: #0f172a;
+            color: white;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f8fafc;
+        }
+
+        /* 卡片式網格 (針對第9頁) */
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.04);
+            border-top: 6px solid #0284c7;
+            position: relative;
+        }
+
+        .card .step {
+            font-size: 3rem;
+            font-weight: 900;
+            color: rgba(2, 132, 199, 0.1);
+            position: absolute;
+            top: 10px;
+            right: 20px;
+        }
+
+        .card h3 {
+            font-size: 1.4rem;
+            color: #0f172a;
+            margin-bottom: 15px;
+        }
+
+        .card p {
+            font-size: 1.1rem;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        /* 頁碼標示 */
+        .page-num {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: rgba(255,255,255,0.2);
+            letter-spacing: 2px;
+        }
+
+        .bg-light .page-num {
+            color: rgba(0,0,0,0.2);
+        }
+
+        /* 滾動提示動畫 */
+        .scroll-hint {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 0.9rem;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
+            40% { transform: translateY(-10px) translateX(-50%); }
+            60% { transform: translateY(-5px) translateX(-50%); }
+        }
+    </style>
+</head>
+<body>
+
+    <section class="slide bg-dark">
+        <div class="content" style="text-align: center;">
+            <h1>日射量反演系統演進技術白皮書</h1>
+            <div class="subtitle">從經驗門檻式架構，邁向基於輻射傳輸理論之模組化平台</div>
+            
+            <div style="margin-top: 60px; padding-top: 40px; border-top: 1px solid rgba(255,255,255,0.2); display: inline-block; text-align: left;">
+                <ul style="font-size: 1.2rem; color: #cbd5e1;">
+                    <li><strong>核心摘要：</strong></li>
+                    <li>第一階段：現行作業基準（經驗式）</li>
+                    <li>第二階段：觀測幾何概念驗證（平滑化）</li>
+                    <li>第三階段：物理模組擴充與長期改良平台（多波段與查表法）</li>
+                </ul>
+            </div>
+        </div>
+        <div class="scroll-hint">▼ 請向下滾動滑鼠以翻頁 ▼</div>
+        <div class="page-num">01</div>
+    </section>
+
+    <section class="slide bg-light">
+        <div class="content">
+            <h2>報告大綱 (Agenda)</h2>
+            <ul>
+                <li>核心架構演進總覽：三代系統對比</li>
+                <li>第一代：現行作業基準之優勢與局限</li>
+                <li>第二代：觀測幾何正規化與門檻優化</li>
+                <li>第三代：基於輻射傳輸之模組化研究版</li>
+                <li>重大物理突破：薄冰雲相態與相對方位角動態修正</li>
+                <li>系統演進之四大階段總結</li>
+            </ul>
+        </div>
+        <div class="page-num">02</div>
+    </section>
+
+    <section class="slide bg-light">
+        <div class="content">
+            <h2>核心架構演進總覽</h2>
+            <div class="subtitle">三代系統之關鍵物理與幾何參數對比</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 20%;">評估維度</th>
+                        <th style="width: 26%;">第一代 (現行作業)</th>
+                        <th style="width: 26%;">第二代 (幾何優化)</th>
+                        <th style="width: 28%;">第三代 (物理模組)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>核心運算架構</strong></td>
+                        <td>晴空輻射 × 經驗雲衰減</td>
+                        <td>維持原架構加幾何修正</td>
+                        <td><strong>輻射傳輸查表 (LUT) 模組</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>訊號整合度</strong></td>
+                        <td>單一可見光與雙紅外</td>
+                        <td>單一可見光與雙紅外</td>
+                        <td><strong>全頻段讀取與寬頻合成</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>幾何正規化</strong></td>
+                        <td>僅依賴太陽天頂角</td>
+                        <td>納入太陽與衛星天頂角</td>
+                        <td><strong>寬頻大氣頂反照率合成</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>雲衰減機制</strong></td>
+                        <td>反照率線性衰減公式</td>
+                        <td>頻道訊號分段非線性調整</td>
+                        <td><strong>反演雲光學厚度 (COD) 查表</strong></td>
+                    </tr>
+                    <tr>
+                        <td><strong>系統防護</strong></td>
+                        <td>無動態防護</td>
+                        <td>初始嚴格門檻基準對照</td>
+                        <td><strong>雙重品管護欄與空值防護</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="page-num">03</div>
+    </section>
+
+    <section class="slide bg-light">
+        <div class="content">
+            <h2>第一代：現行作業基準剖析</h2>
+            <div class="subtitle">高度標準化，但存在物理盲區</div>
+            <ul>
+                <li><strong>基礎邏輯：</strong>
+                    <ul class="sub-list">
+                        <li>晴空輻射估計值 × [ 1.0 - (經驗係數 × 可見光反照率) ]</li>
+                        <li><strong>優勢：</strong>運算效率極高，具備高度穩定性，適合即時作業環境。</li>
+                    </ul>
+                </li>
+                <li style="margin-top: 30px;"><strong>物理盲區與局限性：</strong>
+                    <ul class="sub-list">
+                        <li><strong>過嚴的晴空雙重門檻：</strong>容易將晨昏低太陽角、海面亮化 (Sea Glint) 或微幅高反射地表誤判為雲層，導致局部區域日射量被系統性低估。</li>
+                        <li><strong>訊號維度單一：</strong>高度依賴單一可見光波段，難以精細分辨薄雲層與地表反照率不均勻之複合結構。</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div class="page-num">04</div>
+    </section>
+
+    <section class="slide bg-light">
+        <div class="content">
+            <h2>第二代：觀測幾何與門檻優化</h2>
+            <div class="subtitle">強化空間結構連續性與局部時序合理性</div>
+            <ul>
+                <li><strong>衛星視角幾何正規化：</strong>
+                    <ul class="sub-list">
+                        <li>引入衛星天頂角餘弦進行修正。</li>
+                        <li>確保大觀測視角邊緣與離島區域像元，皆建立於一致的幾何基準面。</li>
+                    </ul>
+                </li>
+                <li><strong>多維度雲判斷放寬：</strong>
+                    <ul class="sub-list">
+                        <li>引入熱紅外線亮溫與亮溫差作為複合檢驗條件。</li>
+                        <li>有效避免將高溫且低反照率之晴空地表誤判為雲層，顯著減少漏判率。</li>
+                    </ul>
+                </li>
+                <li><strong>局部地形精密調適：</strong>
+                    <ul class="sub-list">
+                        <li>正式將高解析度「坡度」與「坡向」納入幾何運算。</li>
+                        <li>重構實際局部入射角，大幅改善山區因地形遮蔽產生之誤差。</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div class="page-num">05</div>
+    </section>
+
+    <section class="slide bg-dark">
+        <div class="content">
+            <h2>第三代：模組化物理研究版</h2>
+            <div class="subtitle" style="color:#94a3b8;">揚棄線性縮放，全面導入大氣輻射傳輸模型</div>
+            <ul>
+                <li><strong>寬頻大氣頂反照率 (TOA Broadband Albedo)：</strong>
+                    <ul class="sub-list">
+                        <li>整合全波段可見光至近紅外訊號，依太陽角度加權組合。</li>
+                        <li>建立不受單一波段地表反射特性干擾的光學指標。</li>
+                    </ul>
+                </li>
+                <li><strong>雲相態分類與光學厚度反演：</strong>
+                    <ul class="sub-list">
+                        <li>利用多個熱紅外與分裂窗資訊，劃分四類雲相態（低水雲、中層雲、深對流雲、薄冰雲）。</li>
+                        <li>反推「雲光學厚度 (COD)」並查閱高精度輻射傳輸模型矩陣 (LUT)。</li>
+                    </ul>
+                </li>
+                <li><strong>資料品質護欄 (Guardrail)：</strong>
+                    <ul class="sub-list">
+                        <li>並行單一波段幾何反照率邏輯，避免寬頻化後極端值低估現象。</li>
+                        <li>徹底修復地形高程空值 (NoData) 導致之清晨數值歸零異常。</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div class="page-num">06</div>
+    </section>
+
+    <section class="slide bg-light">
+        <div class="content">
+            <h2>核心物理突破：薄冰雲 (Thin Ice) 獨立分類</h2>
+            <div class="subtitle">導正輻射傳輸衰減與直達/散射光比例</div>
+            <div style="display: flex; gap: 40px;">
+                <div style="flex: 1; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+                    <h3 style="color:#0f172a; margin-bottom: 15px; font-size:1.4rem;">過往盲區</h3>
+                    <p style="color:#475569; font-size:1.15rem; line-height: 1.8;">未獨立分類時，冰晶常被併入一般高層水雲。因散射相函數差異，導致薄冰雲穿透率被嚴重低估，直達與散射日射量分配失真。</p>
+                </div>
+                <div style="flex: 1.5; background: #f0f9ff; padding: 30px; border-radius: 12px; border-left: 5px solid #0ea5e9;">
+                    <h3 style="color:#0284c7; margin-bottom: 15px; font-size:1.4rem;">模組化導入後之物理表現</h3>
+                    <ul style="margin-left: 20px; font-size: 1.15rem; color:#334155;">
+                        <li style="margin-bottom: 10px;">精確查閱高解析度輻射傳輸矩陣 (LUT)。</li>
+                        <li style="margin-bottom: 10px;">當光學厚度增加時，穿透率呈現非線性下降。</li>
+                        <li style="margin-bottom: 10px;"><strong>關鍵效應：</strong>太陽直達光被攔截並發生強烈物理再分配，轉化為「散射光主導輻射通量」，完美吻合真實大氣物理法則。</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">07</div>
+    </section>
+
+    <section class="slide bg-light">
+        <div class="content">
+            <h2>核心物理突破：相對方位角動態修正機制</h2>
+            <div class="subtitle">消除特定地理與時段之殘存系統性偏差</div>
+            <ul>
+                <li><strong>觀測異常溯源：</strong>
+                    <ul class="sub-list">
+                        <li>近晴空情境下，低海拔上午時段日射量高估，無地形遮蔽之離島呈整日偏高。</li>
+                        <li>單純引入衛星天頂角仍無法徹底消弭此系統性偏差 (Systematic Bias)。</li>
+                    </ul>
+                </li>
+                <li style="margin-top: 30px;"><strong>幾何動態防護機制 (Guardrail)：</strong>
+                    <ul class="sub-list">
+                        <li><strong>成因：</strong>源於太陽、衛星與地表目標觸發之強烈雙向反射分佈函數 (BRDF) 效應與海面亮化。</li>
+                        <li><strong>物理演算解法：</strong>動態計算三維「相對方位角」之複合幾何強度。</li>
+                        <li><strong>結果：</strong>逼近臨界點時系統自動啟動護欄，給予適度之穿透率上限修正，成功收斂極端高估偏差。</li>
+                    </ul>
+                </li>
+            </ul>
+        </div>
+        <div class="page-num">08</div>
+    </section>
+
+    <section class="slide bg-light">
+        <div class="content">
+            <h2>系統演進之四大階段總結</h2>
+            <div class="grid-cards">
+                <div class="card">
+                    <div class="step">01</div>
+                    <h3>階段一：作業架構調校與穩定</h3>
+                    <p>鬆綁嚴苛晴空門檻，完備可見光幾何與地形品管調適，奠定後續發展之穩定基石。</p>
+                </div>
+                <div class="card">
+                    <div class="step">02</div>
+                    <h3>階段二：多維度頻段資訊整合</h3>
+                    <p>突破單波段限制，合成大氣頂寬頻反照率，建立大尺度且一致性之光學特徵指標。</p>
+                </div>
+                <div class="card">
+                    <div class="step">03</div>
+                    <h3>階段三：輻射傳輸物理模型導入</h3>
+                    <p>捨棄經驗縮放，劃分四大雲相態，落實具備物理依據之大氣輻射衰減計算。</p>
+                </div>
+                <div class="card">
+                    <div class="step">04</div>
+                    <h3>階段四：動態幾何防護與誤差收斂</h3>
+                    <p>針對特定殘存系統性偏差，建構相對方位角動態護欄，完成系統末端之高精度品質把關。</p>
+                </div>
+            </div>
+        </div>
+        <div class="page-num">09</div>
+    </section>
+
+    <section class="slide bg-dark">
+        <div class="content" style="text-align: center;">
+            <h2>結論與未來展望</h2>
+            <ul style="text-align: left; display: inline-block; margin-top: 30px; font-size: 1.4rem; color: #cbd5e1;">
+                <li>全新模組化架構已具備獨立驗證與抽換元件之彈性。</li>
+                <li>輻射傳輸理論（LUT）與多頻道大氣相態分類，大幅提升反演數據的物理可信度。</li>
+                <li>為後續直達/散射分流演算、氣候分析與應用端奠定堅實之科學基礎。</li>
+            </ul>
+            
+            <div style="margin-top: 80px; font-size: 4rem; color: #38bdf8; font-weight: bold; letter-spacing: 5px;">
+                Q & A
+            </div>
+        </div>
+        <div class="page-num">10</div>
+    </section>
+
+</body>
+</html>
